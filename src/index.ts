@@ -3,37 +3,140 @@ import escapeRegExp from "lodash.escaperegexp"
 
 const routingKey = Symbol("routing")
 
-enum RoutingType {
-  Path = "path",
-  Query = "query"
+const enum RoutingType {
+  Path,
+  PathSerde,
+  Query,
+  QuerySerde,
 }
 
-export type PathMetadataRepl = string | ((input: Record<string, string>) => unknown)
-export type QueryMetadataRepl = string | ((input: URLSearchParams) => unknown)
+export type PathSerializeFn = (input: any) => Record<string, string>
+export type PathDeserializeFn = (input: Record<string, string>) => unknown
+export type QuerySerializeFn = (input: any) => Record<string, string>
+export type QueryDeserializeFn = (input: URLSearchParams) => unknown
 
 type PathMetadata = {
   type: RoutingType.Path,
-  repl?: PathMetadataRepl
+  propertyKey: string
+} | {
+  type: RoutingType.PathSerde,
+  serialize: PathSerializeFn,
+  deserialize: PathDeserializeFn
 }
 
 type QueryMetadata = {
   type: RoutingType.Query,
-  repl?: QueryMetadataRepl
+  propertyKey: string
+} | {
+  type: RoutingType.QuerySerde,
+  serialize: QuerySerializeFn,
+  deserialize: QueryDeserializeFn
 }
 
 type Metadata = PathMetadata | QueryMetadata
 
-export function path(value?: PathMetadataRepl) {
+export function path(
+  serialize: PathSerializeFn,
+  deserialize: PathDeserializeFn
+): {
+  (target: Function): void
+  (target: Object, propertyKey: string | symbol): void
+}
+export function path(
+  propertyKey: string
+): {
+  (target: Function): void
+  (target: Object, propertyKey: string | symbol): void
+}
+export function path(): {
+  (target: Function): void
+  (target: Object, propertyKey: string | symbol): void
+}
+
+export function path() {
+  if (arguments.length === 1) {
+    if (typeof arguments[0] !== "string") {
+      throw new TypeError("First argument must be of type string.")
+    }
+
+    const [propertyKey] = arguments
+    return Reflect.metadata(routingKey, {
+      type: RoutingType.Path,
+      propertyKey
+    })
+  }
+
+  if (arguments.length >= 2) {
+    if (typeof arguments[0] !== "function") {
+      throw new TypeError("First argument must be of type function.")
+    }
+    if (typeof arguments[1] !== "function") {
+      throw new TypeError("Second argument must be of type function.")
+    }
+
+    const [serialize, deserialize] = arguments
+    return Reflect.metadata(routingKey, {
+      type: RoutingType.PathSerde,
+      serialize,
+      deserialize,
+    })
+  }
+
   return Reflect.metadata(routingKey, {
     type: RoutingType.Path,
-    repl: value
   })
 }
 
-export function query(value?: QueryMetadataRepl) {
+
+export function query(
+  serialize: QuerySerializeFn,
+  deserialize: QueryDeserializeFn
+): {
+  (target: Function): void
+  (target: Object, propertyKey: string | symbol): void
+}
+export function query(
+  propertyKey: string
+): {
+  (target: Function): void
+  (target: Object, propertyKey: string | symbol): void
+}
+export function query(): {
+  (target: Function): void
+  (target: Object, propertyKey: string | symbol): void
+}
+
+export function query() {
+  if (arguments.length === 1) {
+    if (typeof arguments[0] !== "string") {
+      throw new TypeError("First argument must be of type string.")
+    }
+
+    const [propertyKey] = arguments
+    return Reflect.metadata(routingKey, {
+      type: RoutingType.Query,
+      propertyKey
+    })
+  }
+
+  if (arguments.length >= 2) {
+    if (typeof arguments[0] !== "function") {
+      throw new TypeError("First argument must be of type function.")
+    }
+    if (typeof arguments[1] !== "function") {
+      throw new TypeError("Second argument must be of type function.")
+    }
+
+    const [serialize, deserialize] = arguments
+    return Reflect.metadata(routingKey, {
+      type: RoutingType.QuerySerde,
+      serialize,
+      deserialize,
+    })
+  }
+
   return Reflect.metadata(routingKey, {
     type: RoutingType.Query,
-    repl: value
   })
 }
 
@@ -45,40 +148,37 @@ export abstract class Route {
     const queryParams: Record<string, string | string[]> = {}
 
     for (const propName of Object.getOwnPropertyNames(this)) {
-      const meta = Reflect.getMetadata(routingKey, this as unknown as Object, propName)
+      const meta: Metadata = Reflect.getMetadata(
+        routingKey,
+        this as any, 
+        propName
+      )
       if (meta != null) {
-        const key = meta.repl ?? propName
         const value = (this as Record<string, any>)[propName]
         if (value == null) {
           continue
         }
 
-        if (meta.type === RoutingType.Path) {
-          if (typeof value === "string") {
-            pathParams[key] = value
+        switch (meta.type) {
+          case RoutingType.Path: {
+            const key = meta.propertyKey ?? propName
+            pathParams[key] = value.toString()
+            break
           }
-
-          if (typeof value === "object") {
-            for (const [k, v] of Object.entries(value)) {
-              if (typeof v === "string") {
-                pathParams[k] = v
-              } else if (v != null && typeof (v as any).toString === "function") {
-                pathParams[k] = (v as any).toString()
-              }
-            }
+          case RoutingType.PathSerde: {
+            const { serialize } = meta
+            Object.assign(pathParams, serialize(value))
+            break
           }
-
-        } else if (meta.type === RoutingType.Query) {
-          if (typeof value === "string" || Array.isArray(value)) {
-            queryParams[key] = value
-          } else if (typeof value === "object") {
-            for (const [k, v] of Object.entries(value)) {
-              if (typeof v === "string" || Array.isArray(v)) {
-                queryParams[k] = v
-              } else if (v != null && typeof (v as any).toString === "function") {
-                queryParams[k] = (v as any).toString()
-              }
-            }
+          case RoutingType.Query: {
+            const key = meta.propertyKey ?? propName
+            queryParams[key] = value.toString()
+            break
+          }
+          case RoutingType.QuerySerde: {
+            const { serialize } = meta
+            Object.assign(queryParams, serialize(value))
+            break
           }
         }
       }
@@ -89,8 +189,8 @@ export abstract class Route {
 }
 
 function resolveFieldsMetadata(route: Route) {
-  const pathFields: Record<string, PathMetadataRepl> = {}
-  const queryFields: Record<string, QueryMetadataRepl> = {}
+  const pathFields: Record<string, string | PathDeserializeFn> = {}
+  const queryFields: Record<string, string | QueryDeserializeFn> = {}
 
   for (const propName of Object.getOwnPropertyNames(route)) {
     const meta: Metadata | undefined = Reflect.getMetadata(routingKey, route, propName)
@@ -99,10 +199,19 @@ function resolveFieldsMetadata(route: Route) {
       continue
     }
 
-    if (meta.type === RoutingType.Path) {
-      pathFields[propName] = meta.repl ?? propName
-    } else if (meta.type === RoutingType.Query) {
-      queryFields[propName] = meta.repl ?? propName
+    switch (meta.type) {
+      case RoutingType.Path:
+        pathFields[propName] = meta.propertyKey ?? propName
+        break
+      case RoutingType.PathSerde:
+        pathFields[propName] = meta.deserialize
+        break
+      case RoutingType.Query:
+        queryFields[propName] = meta.propertyKey ?? propName
+        break
+      case RoutingType.QuerySerde:
+        queryFields[propName] = meta.deserialize
+        break
     }
   }
 
@@ -149,7 +258,6 @@ export function fromUrl<T extends Route>(type: Function, path: string): T {
 
   for (const [key, value] of Object.entries(queryFields)) {
     if (typeof value === "string") {
-      // TODO: handle mutiple values
       const queryValue = queryParams.get(value)
       if (queryValue == null) {
         if (tmp[key] !== undefined) {
@@ -166,7 +274,11 @@ export function fromUrl<T extends Route>(type: Function, path: string): T {
   return tmp
 }
 
-function toRelativePath(pattern: string, pathParams: Record<string, string>, queryParams?: Record<string, string | string[]>) {
+function toRelativePath(
+  pattern: string,
+  pathParams: Record<string, string>,
+  queryParams?: Record<string, string | string[]>
+) {
   let url = pattern
 
   for (const [key, value] of Object.entries(pathParams)) {
