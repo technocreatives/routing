@@ -1,0 +1,22 @@
+{
+  "name": "@thetc/routing",
+  "version": "0.1.0",
+  "description": "Type-safe routing (as much as TypeScript will let us, anyway)",
+  "main": "dist/index.js",
+  "scripts": {
+    "install": "npm run build",
+    "build": "tsc --project ."
+  },
+  "author": "Brendan Molloy <brendan@technocreatives.com>",
+  "license": "Apache-2.0 OR MIT",
+  "devDependencies": {
+    "@types/lodash.escaperegexp": "^4.1.6",
+    "@types/react": "^17.0.39",
+    "typescript": "^4.5.5"
+  },
+  "dependencies": {
+    "lodash.escaperegexp": "^4.1.2",
+    "reflect-metadata": "^0.1.13",
+    "typescript": "^4.5.5"
+  }
+}

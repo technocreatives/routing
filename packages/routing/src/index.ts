@@ -1,6 +1,7 @@
 import "reflect-metadata"
 import escapeRegExp from "lodash.escaperegexp"
 
+const routeKey = Symbol("route")
 const routingKey = Symbol("routing")
 
 const enum RoutingType {
@@ -18,6 +19,7 @@ export type QueryDeserializeFn = (input: URLSearchParams) => unknown
 type PathMetadata = {
   type: RoutingType.Path,
   propertyKey: string
+  dataType?: Function,
 } | {
   type: RoutingType.PathSerde,
   serialize: PathSerializeFn,
@@ -26,7 +28,8 @@ type PathMetadata = {
 
 type QueryMetadata = {
   type: RoutingType.Query,
-  propertyKey: string
+  propertyKey: string,
+  dataType?: Function,
 } | {
   type: RoutingType.QuerySerde,
   serialize: QuerySerializeFn,
@@ -52,7 +55,6 @@ export function path(): {
   (target: Function): void
   (target: Object, propertyKey: string | symbol): void
 }
-
 export function path() {
   if (arguments.length === 1) {
     if (typeof arguments[0] !== "string") {
@@ -87,11 +89,12 @@ export function path() {
   })
 }
 
+type QueryArguments = {
+  key?: string,
+  type?: Function,
+}
 
-export function query(
-  serialize: QuerySerializeFn,
-  deserialize: QueryDeserializeFn
-): {
+export function query(): {
   (target: Function): void
   (target: Object, propertyKey: string | symbol): void
 }
@@ -101,22 +104,40 @@ export function query(
   (target: Function): void
   (target: Object, propertyKey: string | symbol): void
 }
-export function query(): {
+export function query(
+  serialize: QuerySerializeFn,
+  deserialize: QueryDeserializeFn
+): {
   (target: Function): void
   (target: Object, propertyKey: string | symbol): void
 }
-
+export function query({
+  key,
+  type,
+}: QueryArguments): {
+  (target: Function): void
+  (target: Object, propertyKey: string | symbol): void
+}
 export function query() {
   if (arguments.length === 1) {
-    if (typeof arguments[0] !== "string") {
-      throw new TypeError("First argument must be of type string.")
+    if (typeof arguments[0] === "string") {
+      const [propertyKey] = arguments
+      return Reflect.metadata(routingKey, {
+        type: RoutingType.Query,
+        propertyKey
+      })
     }
 
-    const [propertyKey] = arguments
-    return Reflect.metadata(routingKey, {
-      type: RoutingType.Query,
-      propertyKey
-    })
+    if (typeof arguments[0] === "object") {
+      const { key, type } = arguments[0] as QueryArguments
+      return Reflect.metadata(routingKey, {
+        type: RoutingType.Query,
+        propertyKey: key,
+        dataType: type,
+      })
+    }
+
+    throw new TypeError("First argument must be of type string.")
   }
 
   if (arguments.length >= 2) {
@@ -140,57 +161,57 @@ export function query() {
   })
 }
 
-export abstract class Route {
-  abstract readonly route: string
-  
-  toRelativeUrl() {
-    const pathParams: Record<string, string> = {}
-    const queryParams: Record<string, string | string[]> = {}
+export function toRelativeUrl(obj: any, route?: string) {
+  const pathParams: Record<string, string> = {}
+  const queryParams: Record<string, string | string[]> = {}
 
-    for (const propName of Object.getOwnPropertyNames(this)) {
-      const meta: Metadata = Reflect.getMetadata(
-        routingKey,
-        this as any, 
-        propName
-      )
-      if (meta != null) {
-        const value = (this as Record<string, any>)[propName]
-        if (value == null) {
-          continue
+  for (const propName of Object.getOwnPropertyNames(obj)) {
+    const meta: Metadata = Reflect.getMetadata(
+      routingKey,
+      obj, 
+      propName
+    )
+    if (meta != null) {
+      const value = obj[propName]
+      if (value == null) {
+        continue
+      }
+
+      switch (meta.type) {
+        case RoutingType.Path: {
+          const key = meta.propertyKey ?? propName
+          pathParams[key] = value.toString()
+          break
         }
-
-        switch (meta.type) {
-          case RoutingType.Path: {
-            const key = meta.propertyKey ?? propName
-            pathParams[key] = value.toString()
-            break
-          }
-          case RoutingType.PathSerde: {
-            const { serialize } = meta
-            Object.assign(pathParams, serialize(value))
-            break
-          }
-          case RoutingType.Query: {
-            const key = meta.propertyKey ?? propName
+        case RoutingType.PathSerde: {
+          const { serialize } = meta
+          Object.assign(pathParams, serialize(value))
+          break
+        }
+        case RoutingType.Query: {
+          const key = meta.propertyKey ?? propName
+          if (meta.dataType === Boolean && value != null && value != false) {
+            queryParams[key] = ""
+          } else {
             queryParams[key] = value.toString()
-            break
           }
-          case RoutingType.QuerySerde: {
-            const { serialize } = meta
-            Object.assign(queryParams, serialize(value))
-            break
-          }
+          break
+        }
+        case RoutingType.QuerySerde: {
+          const { serialize } = meta
+          Object.assign(queryParams, serialize(value))
+          break
         }
       }
     }
-    
-    return toRelativePath(this.route, pathParams, queryParams)
   }
+  
+  return toRelativePath(route ?? obj[routeKey], pathParams, queryParams)
 }
 
-function resolveFieldsMetadata(route: Route) {
+function resolveFieldsMetadata(route: Record<string, any>) {
   const pathFields: Record<string, string | PathDeserializeFn> = {}
-  const queryFields: Record<string, string | QueryDeserializeFn> = {}
+  const queryFields: Record<string, [string, Function | undefined] | QueryDeserializeFn> = {}
 
   for (const propName of Object.getOwnPropertyNames(route)) {
     const meta: Metadata | undefined = Reflect.getMetadata(routingKey, route, propName)
@@ -207,7 +228,7 @@ function resolveFieldsMetadata(route: Route) {
         pathFields[propName] = meta.deserialize
         break
       case RoutingType.Query:
-        queryFields[propName] = meta.propertyKey ?? propName
+        queryFields[propName] = [meta.propertyKey ?? propName, meta.dataType]
         break
       case RoutingType.QuerySerde:
         queryFields[propName] = meta.deserialize
@@ -218,11 +239,14 @@ function resolveFieldsMetadata(route: Route) {
   return { pathFields, queryFields }
 }
 
-export function fromUrl<T extends Route>(type: Function, path: string): T {
+export function fromUrl<T>(type: Function, path: string, route?: string): T {
+  if (route == null && (type as any)[routeKey] == null) {
+    throw new TypeError("Type does not contain a route. Use the @route decorator.")
+  }
   const tmp: any = new (type as any)
   const { pathFields, queryFields } = resolveFieldsMetadata(tmp)
 
-  const pathRegex = escapeRegExp(tmp.route).replace(/\\\{(.*?)\\\}/g, "(?<$1>[^/?]+)")
+  const pathRegex = escapeRegExp(route ?? tmp[routeKey]).replace(/\\\{(.*?)\\\}/g, "(?<$1>[^/?]+)")
   const re = new RegExp(`${pathRegex}(?:\\?([^#]*))?`)
   const result = re.exec(path)
 
@@ -250,21 +274,27 @@ export function fromUrl<T extends Route>(type: Function, path: string): T {
         }
         throw new Error(`URL is missing path field for '${value}'.`)
       }
-      tmp[key] = regexValue
+      tmp[key] = decodeURIComponent(regexValue)
     } else if (typeof value === "function") {
       tmp[key] = value(groups)
     }
   }
 
   for (const [key, value] of Object.entries(queryFields)) {
-    if (typeof value === "string") {
-      const queryValue = queryParams.get(value)
-      if (queryValue == null) {
+    if (Array.isArray(value)) {
+      const [propName, dataType] = value
+      const queryValue = queryParams.get(propName)
+      
+      if (dataType === Boolean) {
+        tmp[key] = queryValue != null
+        continue
+      } else if (queryValue == null) {
         if (tmp[key] !== undefined) {
           continue
         }
         throw new Error(`URL is missing query field for '${value}'.`)
       }
+
       tmp[key] = queryValue
     } else if (typeof value === "function") {
       tmp[key] = value(queryParams)
@@ -310,4 +340,20 @@ function toRelativePath(
   }
 
   return url
+}
+
+export function route(path: string) {
+  return (constructor: Function) => {
+    Object.defineProperties(constructor, {
+      [routeKey]: {
+        get() { return path }
+      }
+    })
+
+    Object.defineProperties(constructor.prototype, {
+      [routeKey]: {
+        get() { return (constructor as any)[routeKey] }
+      }
+    })
+  }
 }
