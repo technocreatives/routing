@@ -4,12 +4,12 @@
 
 Frustrated with the state of routing?
 
-## Contents
+### Contents
 
 - `@thetc/routing` — core library including all the route magic
 - `@thetc/routing-next` — the `useRoute` hook for use with Next.js
 
-## Philosophy of @thetc/routing
+### Philosophy of @thetc/routing
 
 There's a few aspects to this:
 
