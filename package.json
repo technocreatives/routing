@@ -1,5 +1,6 @@
 {
   "name": "@thetc/routing-workspace",
+  "private": true,
   "workspaces": [
     "packages/*"
   ]
