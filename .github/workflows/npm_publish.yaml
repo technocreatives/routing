@@ -4,7 +4,7 @@ on:
       - '*'
 
 jobs:
-  publish:
+  publish_routing:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
@@ -12,6 +12,21 @@ jobs:
         with:
           node-version: 16
       - run: npm install
+        working-directory: packages/routing
       - uses: JS-DevTools/npm-publish@v1
         with:
           token: ${{ secrets.NPM_TOKEN }}
+          package: packages/routing/package.json
+  publish_routing_next:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 16
+      - run: npm install
+        working-directory: packages/routing-next
+      - uses: JS-DevTools/npm-publish@v1
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+          package: packages/routing-next/package.json
