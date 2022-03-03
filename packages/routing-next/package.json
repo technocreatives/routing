@@ -1,6 +1,6 @@
 {
   "name": "@thetc/routing-next",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Routing helpers for Next.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,6 +19,6 @@
     "typescript": "^4.5.5"
   },
   "dependencies": {
-    "@thetc/routing": "^0.1.7"
+    "@thetc/routing": "^0.1.8"
   }
 }
