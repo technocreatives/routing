@@ -1,8 +1,9 @@
 {
   "name": "@thetc/routing",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "description": "Type-safe routing (as much as TypeScript will let us, anyway)",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "install": "npm run build",
     "build": "tsc --project ."
@@ -16,7 +17,6 @@
   },
   "dependencies": {
     "lodash.escaperegexp": "^4.1.2",
-    "reflect-metadata": "^0.1.13",
-    "typescript": "^4.5.5"
+    "reflect-metadata": "^0.1.13"
   }
 }
