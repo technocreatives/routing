@@ -1,5 +1,5 @@
 import "reflect-metadata"
-import { escapeRegExp } from "./lodash.escaperegexp"
+import escapeRegExp from "./lodash.escaperegexp"
 
 const routeKey = Symbol("route")
 const routingKey = Symbol("routing")
