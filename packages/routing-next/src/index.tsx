@@ -21,7 +21,6 @@ export type LinkProps<T> = {
 export function Link<T>(props: React.PropsWithChildren<LinkProps<T>>) {
   const ordinaryProps = props
   const route = props.route
-  delete (ordinaryProps as any).route
 
   return <NextLink {...ordinaryProps} href={toRelativeUrl(route)} />
 }
