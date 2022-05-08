@@ -393,7 +393,9 @@ export function route(name: string, path: string, options?: {
       }
     })
 
-    if (!knownRoutes[group][name].includes(constructor)) {
+    const thisRouteKey = (constructor as any)[routeKey]
+
+    if (knownRoutes[group][name].find((x) => (x as any)[routeKey] === thisRouteKey) == null) {
       knownRoutes[group][name].push(constructor)
     }
   }
