@@ -428,6 +428,16 @@ export function from(url: string, group: string = ""): Route | null {
   return null
 }
 
+export function is(url: string, name: string, group: string = ""): boolean {
+  for (const candidate of definedRoutes(group)[name] ?? []) {
+    try {
+      fromUrl(candidate, url)
+      return true
+    } catch (e) {}
+  }
+  return false
+}
+
 type Route = {
   name: string,
   route: OpaqueRoute
