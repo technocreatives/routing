@@ -359,8 +359,22 @@ function toRelativePath(
   return url
 }
 
-export function route(name: string, path: string) {
+const knownRoutes: Record<string, Record<string, Function[]>> = {}
+
+export function route(name: string, path: string, options?: {
+  group?: string
+}) {
   return (constructor: Function) => {
+    const group = options?.group ?? ""
+
+    if (knownRoutes[group] == null) {
+      knownRoutes[group] = {}
+    }
+
+    if (knownRoutes[group][name] == null) {
+      knownRoutes[group][name] = []
+    }
+
     Object.defineProperties(constructor, {
       [routeKey]: {
         get() { return path }
@@ -378,6 +392,8 @@ export function route(name: string, path: string) {
         get() { return (constructor as any)[nameKey] }
       }
     })
+
+    knownRoutes[group][name].push(constructor)
   }
 }
 
@@ -392,3 +408,29 @@ export function routeName(route: Function | object) {
 
   return (route as any)[nameKey]
 }
+
+export function definedRoutes(group: string = "") {
+  return knownRoutes[group]
+}
+
+export function from(url: string, group: string = ""): Route | null {
+  for (const [name, candidates] of Object.entries(definedRoutes(group))) {
+    for (const candidate of candidates) {
+      try {
+        const route = fromUrl(candidate, url)
+        return {
+          name,
+          route
+        }
+      } catch (e) {}
+    }
+  }
+  return null
+}
+
+type Route = {
+  name: string,
+  route: OpaqueRoute
+}
+
+type OpaqueRoute = unknown
