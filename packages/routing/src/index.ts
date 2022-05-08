@@ -393,7 +393,9 @@ export function route(name: string, path: string, options?: {
       }
     })
 
-    knownRoutes[group][name].push(constructor)
+    if (!knownRoutes[group][name].includes(constructor)) {
+      knownRoutes[group][name].push(constructor)
+    }
   }
 }
 
