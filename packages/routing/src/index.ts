@@ -249,10 +249,17 @@ function resolveFieldsMetadata(route: Record<string, any>) {
   return { pathFields, queryFields }
 }
 
-export function fromUrl<T>(type: Function, path: string, route?: string): T {
-  if (route == null && (type as any)[routeKey] == null) {
+function assertIsRoute(type: Function | object) {
+  if ((type as any)[routeKey] == null) {
     throw new TypeError("Type does not contain a route. Use the @route decorator.")
   }
+}
+
+export function fromUrl<T>(type: Function, path: string, route?: string): T {
+  if (route == null) {
+    assertIsRoute(type)
+  }
+
   const tmp: any = new (type as any)
   const { pathFields, queryFields } = resolveFieldsMetadata(tmp)
 
@@ -352,18 +359,36 @@ function toRelativePath(
   return url
 }
 
-export function route(path: string) {
+export function route(name: string, path: string) {
   return (constructor: Function) => {
     Object.defineProperties(constructor, {
       [routeKey]: {
         get() { return path }
+      },
+      [nameKey]: {
+        get() { return name }
       }
     })
 
     Object.defineProperties(constructor.prototype, {
       [routeKey]: {
         get() { return (constructor as any)[routeKey] }
+      },
+      [nameKey]: {
+        get() { return (constructor as any)[nameKey] }
       }
     })
   }
+}
+
+export function routePath(route: Function | object) {
+  assertIsRoute(route)
+
+  return (route as any)[routeKey]
+}
+
+export function routeName(route: Function | object) {
+  assertIsRoute(route)
+
+  return (route as any)[nameKey]
 }
