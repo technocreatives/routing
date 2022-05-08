@@ -1,8 +1,18 @@
 import "reflect-metadata"
-import escapeRegExp from "./lodash.escaperegexp"
 
-const routeKey = Symbol("route")
-const routingKey = Symbol("routing")
+const routeKey = Symbol("routing/route")
+const nameKey = Symbol("routing/name")
+const routingKey = Symbol("routing/meta")
+
+const reRegExpChar = /[\\^$.*+?()[\]{}|]/g
+const reHasRegExpChar = RegExp(reRegExpChar.source)
+
+// From lodash, MIT licensed.
+function escapeRegExp(string: string) {
+  return reHasRegExpChar.test(string)
+    ? string.replace(reRegExpChar, '\\$&')
+    : string
+}
 
 const enum RoutingType {
   Path,
