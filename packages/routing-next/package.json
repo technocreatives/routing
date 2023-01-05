@@ -1,6 +1,6 @@
 {
   "name": "@thetc/routing-next",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Routing helpers for Next.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -12,10 +12,10 @@
   "license": "Apache-2.0 OR MIT",
   "peerDependencies": {
     "next": "^12.0.10",
-    "react": "^17.0.2"
+    "react": "^17.0.2 || ^18.0"
   },
   "devDependencies": {
-    "@types/react": "^17.0.39",
+    "@types/react": "^17.0.39 || ^18.0",
     "typescript": "^4.5.5"
   },
   "dependencies": {

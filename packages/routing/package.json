@@ -1,6 +1,6 @@
 {
   "name": "@thetc/routing",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Type-safe routing (as much as TypeScript will let us, anyway)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,7 +11,7 @@
   "author": "Brendan Molloy <brendan@technocreatives.com>",
   "license": "Apache-2.0 OR MIT",
   "devDependencies": {
-    "@types/react": "^17.0.39",
+    "@types/react": "^17.0.39 || ^18.0",
     "typescript": "^4.5.5"
   },
   "dependencies": {
