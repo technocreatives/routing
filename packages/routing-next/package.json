@@ -1,6 +1,6 @@
 {
   "name": "@thetc/routing-next",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Routing helpers for Next.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,7 +11,7 @@
   "author": "Brendan Molloy <brendan@technocreatives.com>",
   "license": "Apache-2.0 OR MIT",
   "peerDependencies": {
-    "next": "^12.0.10",
+    "next": "^12.0.10 || ^13.0",
     "react": "^17.0.2 || ^18.0"
   },
   "devDependencies": {
